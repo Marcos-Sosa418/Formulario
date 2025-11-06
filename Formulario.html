@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Menú Dinámico Multinivel </title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: #f2f6fa;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 { color: #0b5394; margin-bottom: 10px; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 20px;
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    /* Panel principal (menú + submenus + items) */
+    .panel {
+      background: white;
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 6px 18px rgba(10,20,40,0.06);
+    }
+
+    .menu-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .menu-buttons button {
+      background: #0b5394;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform .12s ease, background .12s;
+    }
+
+    .menu-buttons button:hover { transform: translateY(-3px); }
+    .menu-buttons button.active { background: #073763; }
+
+    .submenu-list { margin: 10px 0; display:flex; gap:8px; flex-wrap:wrap; }
+    .submenu-list button {
+      background: #3d85c6; color:white; border:none; border-radius:8px; padding:7px 12px; cursor:pointer;
+    }
+    .submenu-list button:hover { background:#2b6fa8; }
+
+    .items-list ul { list-style:none; padding:0; margin:0; }
+    .items-list li {
+      background:#eef4ff; margin:8px 0; padding:10px; border-radius:8px; display:flex; justify-content:space-between;
+    }
+
+    /* Panel derecho: formularios */
+    .forms {
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .card {
+      background: white;
+      padding: 12px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(10,20,40,0.04);
+    }
+
+    .card h3 { margin: 0 0 8px 0; color: #0b5394; font-size:16px; }
+    label { display:block; font-size:13px; margin-top:6px; color:#333; }
+    input, select, button {
+      width:100%;
+      padding:8px 10px;
+      border-radius:8px;
+      border:1px solid #ccc;
+      box-sizing:border-box;
+      margin-top:6px;
+      font-size:14px;
+    }
+    .small-row { display:flex; gap:8px; }
+    .small-row input, .small-row select { width: 100%; }
+    .card button { margin-top:10px; background:#0b5394; color:white; border:none; cursor:pointer; }
+    .hint { font-size:12px; color:#666; margin-top:6px; }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; padding-bottom: 60px; }
+      .forms { order: 2; }
+    }
+  </style>
+</head>
+<body>
+  <h1> Menú Dinámico Multinivel </h1>
+
+  <div class="layout">
+    <!-- Panel izquierdo: Menú, Submenús e Ítems -->
+    <div class="panel">
+      <div class="menu-buttons" id="menu-buttons"></div>
+
+      <div id="submenu-area">
+        <!-- Aquí se inyectan los submenus -->
+      </div>
+
+      <div class="items-list" id="items-area" style="margin-top:14px;"></div>
+    </div>
+
+    <!-- Panel derecho: Formularios para agregar -->
+    <div class="forms">
+      <!-- Crear categoría -->
+      <div class="card">
+        <h3> Agregar categoría</h3>
+        <label for="new-category">Nombre de la categoría</label>
+        <input id="new-category" placeholder=" " />
+        <button onclick="agregarCategoria()">Agregar Categoría</button>
+        <div class="hint">Crea una categoría principal.</div>
+      </div>
+
+      <!-- Crear submenú -->
+      <div class="card">
+        <h3> Agregar submenú</h3>
+        <label for="category-for-submenu">Selecciona categoría</label>
+        <select id="category-for-submenu"></select>
+        <label for="new-submenu">Nombre del submenú</label>
+        <input id="new-submenu" placeholder=" " />
+        <button onclick="agregarSubmenu()">Agregar Submenú</button>
+        <div class="hint">Crea un submenú dentro de una categoría.</div>
+      </div>
+
+      <!-- Agregar item -->
+      <div class="card">
+        <h3>Agregar ítem</h3>
+        <label for="category-for-item">Selecciona categoría</label>
+        <select id="category-for-item" onchange="actualizarSubmenuSelect()"></select>
+
+        <label for="submenu-for-item">Selecciona submenú</label>
+        <select id="submenu-for-item"></select>
+
+        <label for="item-name">Nombre del ítem</label>
+        <input id="item-name" placeholder=" " />
+
+        <label for="item-price">Precio </label>
+        <input id="item-price" type="number" placeholder=" " min="0" />
+
+        <button onclick="agregarItem()">Agregar Ítem</button>
+        <div class="hint">Selecciona la categoría y submenú donde se añadirá el ítem.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  //  Datos iniciales
+  const menuData = {
+    categorias: [
+      {
+        nombre: "Comidas",
+        submenus: [
+          {
+            nombre: "Rápidas",
+            items: [
+              { nombre: "Hamburguesa", precio: 450 },
+              { nombre: "Tacos", precio: 300 },
+              { nombre: "Pizza", precio: 600 }
+            ]
+          },
+          {
+            nombre: "Postres",
+            items: [
+              { nombre: "Helado", precio: 120 },
+              { nombre: "Brownie", precio: 150 }
+            ]
+          }
+        ]
+      },
+      {
+        nombre: "Bebidas",
+        submenus: [
+          {
+            nombre: "Con Gas",
+            items: [
+              { nombre: "CocaCola", precio: 60 },
+              { nombre: "Pepsi", precio: 50 }
+            ]
+          },
+          {
+            nombre: "Naturales",
+            items: [
+              { nombre: "Jugo de naranja", precio: 90 },
+              { nombre: "Batida de fresa", precio: 120 }
+            ]
+          }
+        ]
+      },
+      {
+        nombre: "Otros",
+        submenus: [
+          {
+            nombre: "Complementos",
+            items: [
+              { nombre: "Galletas", precio: 40 },
+			  { nombre: "Dulces", precio: 40 },
+              { nombre: "Papitas", precio: 60 }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  // Variables de estado
+  let categoriaActiva = 0;
+  let submenuActivo = null; // índice dentro de submenus de la categoría activa
+
+  // Referencias DOM
+  const menuButtonsEl = document.getElementById('menu-buttons');
+  const submenuArea = document.getElementById('submenu-area');
+  const itemsArea = document.getElementById('items-area');
+
+  const selectCategoryForSubmenu = document.getElementById('category-for-submenu');
+  const selectCategoryForItem = document.getElementById('category-for-item');
+  const selectSubmenuForItem = document.getElementById('submenu-for-item');
+
+  // Render general del menú (botones de categoría) 
+  function renderMenuButtons() {
+    menuButtonsEl.innerHTML = '';
+    menuData.categorias.forEach((cat, idx) => {
+      const btn = document.createElement('button');
+      btn.textContent = cat.nombre;
+      btn.classList.toggle('active', idx === categoriaActiva);
+      btn.onclick = () => {
+        categoriaActiva = idx;
+        submenuActivo = null;
+        renderSubmenus();
+      };
+      menuButtonsEl.appendChild(btn);
+    });
+
+    // Actualizar selects de formularios
+    actualizarSelects();
+    actualizarSubmenuSelect();
+  }
+
+  //  Render submenus de la categoría activa 
+  function renderSubmenus() {
+    submenuArea.innerHTML = '';
+    itemsArea.innerHTML = '';
+
+    const categoria = menuData.categorias[categoriaActiva];
+    if (!categoria) return;
+
+    const title = document.createElement('h2');
+    title.style.margin = '0 0 8px 0';
+    title.textContent = categoria.nombre;
+    submenuArea.appendChild(title);
+
+    const container = document.createElement('div');
+    container.className = 'submenu-list';
+
+    categoria.submenus.forEach((sm, sIdx) => {
+      const btn = document.createElement('button');
+      btn.textContent = sm.nombre;
+      btn.onclick = () => {
+        submenuActivo = sIdx;
+        renderItems();
+      };
+      container.appendChild(btn);
+    });
+
+    // Si no hay submenus, mostrar mensaje
+    if (categoria.submenus.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'hint';
+      p.textContent = 'Esta categoría no tiene submenús.';
+      submenuArea.appendChild(p);
+    } else {
+      submenuArea.appendChild(container);
+    }
+    // Actualizar selects en formularios
+    actualizarSubmenuSelect();
+  }
+
+  // --- Render items del submenu activo ---
+  function renderItems() {
+    itemsArea.innerHTML = '';
+    const categoria = menuData.categorias[categoriaActiva];
+    if (!categoria || submenuActivo === null) {
+      itemsArea.innerHTML = '<p class="hint">Selecciona un submenú para ver sus ítems.</p>';
+      return;
+    }
+    const submenu = categoria.submenus[submenuActivo];
+    const title = document.createElement('h3');
+    title.style.margin = '0 0 8px 0';
+    title.textContent = submenu.nombre;
+    itemsArea.appendChild(title);
+
+    if (!submenu.items || submenu.items.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'hint';
+      p.textContent = 'No hay ítems en este submenú.';
+      itemsArea.appendChild(p);
+      return;
+    }
+
+    const ul = document.createElement('ul');
+    submenu.items.forEach((item, iIdx) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span><strong>${item.nombre}</strong></span><span>$${Math.round(item.precio)}</span>`;
+
+      // Botón eliminar por item (opcional)
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Eliminar';
+      delBtn.style.marginLeft = '10px';
+      delBtn.style.background = '#ff6b6b';
+      delBtn.style.border = 'none';
+      delBtn.style.color = 'white';
+      delBtn.style.borderRadius = '6px';
+      delBtn.style.padding = '4px 8px';
+      delBtn.style.cursor = 'pointer';
+      delBtn.onclick = () => {
+        if (confirm(`Eliminar "${item.nombre}"?`)) {
+          submenu.items.splice(iIdx,1);
+          renderItems();
+        }
+      };
+
+      // Contenedor para texto y acciones
+      li.style.display = 'flex';
+      li.style.alignItems = 'center';
+      li.style.justifyContent = 'space-between';
+
+      const right = document.createElement('div');
+      right.style.display = 'flex';
+      right.style.alignItems = 'center';
+      right.appendChild(delBtn);
+
+      li.appendChild(right);
+      ul.appendChild(li);
+    });
+
+    itemsArea.appendChild(ul);
+  }
+
+  // Formularios: agregar categoría, submenú, ítem 
+
+  function agregarCategoria() {
+    const input = document.getElementById('new-category');
+    const nombre = input.value.trim();
+    if (!nombre) { alert('Escribe un nombre para la categoría.'); return; }
+    menuData.categorias.push({ nombre, submenus: [] });
+    input.value = '';
+    // seleccionar la nueva categoria
+    categoriaActiva = menuData.categorias.length - 1;
+    submenuActivo = null;
+    renderMenuButtons();
+    renderSubmenus();
+  }
+
+  function agregarSubmenu() {
+    const sel = selectCategoryForSubmenu;
+    const catIdx = parseInt(sel.value, 10);
+    const nameInput = document.getElementById('new-submenu');
+    const nombre = nameInput.value.trim();
+    if (isNaN(catIdx) || !menuData.categorias[catIdx]) { alert('Selecciona una categoría válida.'); return; }
+    if (!nombre) { alert('Escribe un nombre para el submenú.'); return; }
+
+    const cat = menuData.categorias[catIdx];
+    cat.submenus.push({ nombre, items: [] });
+    nameInput.value = '';
+
+    // seleccionar la categoria donde se añadió y mostrar submenus
+    categoriaActiva = catIdx;
+    submenuActivo = cat.submenus.length - 1;
+    renderMenuButtons();
+    renderSubmenus();
+    renderItems();
+  }
+
+  function agregarItem() {
+    const catIdx = parseInt(selectCategoryForItem.value, 10);
+    const subIdx = parseInt(selectSubmenuForItem.value, 10);
+    const name = document.getElementById('item-name').value.trim();
+    const priceVal = document.getElementById('item-price').value;
+
+    if (isNaN(catIdx) || !menuData.categorias[catIdx]) { alert('Selecciona una categoría válida.'); return; }
+    if (isNaN(subIdx) || !menuData.categorias[catIdx].submenus[subIdx]) { alert('Selecciona un submenú válido.'); return; }
+    if (!name) { alert('Escribe un nombre para el ítem.'); return; }
+    const precio = parseFloat(priceVal);
+    if (isNaN(precio) || precio < 0) { alert('Escribe un precio válido (número entero).'); return; }
+
+    // redondea al entero
+    menuData.categorias[catIdx].submenus[subIdx].items.push({ nombre: name, precio: Math.round(precio) });
+
+    // limpiar campos
+    document.getElementById('item-name').value = '';
+    document.getElementById('item-price').value = '';
+
+    // mostrar donde se añadió
+    categoriaActiva = catIdx;
+    submenuActivo = subIdx;
+    renderMenuButtons();
+    renderSubmenus();
+    renderItems();
+  }
+
+  // Helpers para mantener selects sincronizados 
+  function actualizarSelects() {
+    // selectCategoryForSubmenu y selectCategoryForItem
+    [selectCategoryForSubmenu, selectCategoryForItem].forEach(sel => {
+      sel.innerHTML = '';
+      menuData.categorias.forEach((cat, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = cat.nombre;
+        sel.appendChild(opt);
+      });
+    });
+    // tambien actualizar submenu select según la categoría seleccionada en el formulario de item
+    actualizarSubmenuSelect();
+  }
+
+  function actualizarSubmenuSelect() {
+    const catIdx = parseInt(selectCategoryForItem.value, 10);
+    selectSubmenuForItem.innerHTML = '';
+    if (isNaN(catIdx) || !menuData.categorias[catIdx]) {
+      const opt = document.createElement('option'); opt.textContent = '---'; selectSubmenuForItem.appendChild(opt); return;
+    }
+    const submenus = menuData.categorias[catIdx].submenus;
+    if (!submenus || submenus.length === 0) {
+      const opt = document.createElement('option'); opt.textContent = 'Esta categoría no tiene submenús'; selectSubmenuForItem.appendChild(opt); return;
+    }
+    submenus.forEach((sm, idx) => {
+      const opt = document.createElement('option'); opt.value = idx; opt.textContent = sm.nombre; selectSubmenuForItem.appendChild(opt);
+    });
+  }
+
+  // Inicialización
+  renderMenuButtons();
+  renderSubmenus();
+  renderItems();
+
+  // Por si el usuario cambia el select de categoría en el panel de Add Item 
+  selectCategoryForItem.addEventListener('change', actualizarSubmenuSelect);
+</script>
+</body>
+</html>
